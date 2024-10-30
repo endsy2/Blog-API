@@ -141,31 +141,42 @@ export const getSpecificBlog=(req,res)=>{
         })
     }
 }
-export const blogPagination=(req,res)=>{
-    const useID=req.userID;
-    console.log(useID);
-    
-    const limit=12;
-    const page=parseInt(req.query.page) | 1;
-    const offset=(page-1)*limit;
-    const sql="SELECT * FROM blog WHERE userID = ? LIMIT ? OFFSET ?;"
-    const insertValue=[useID,limit,offset]
-
+export const blogPagination = (req, res) => {
+    const useID = req.userID;
+    const limit = 4;
+    const page = parseInt(req.query.page) || 1;
+    const offset = (page - 1) * limit;
+  
+    const sql = "SELECT * FROM blog WHERE userID = ? LIMIT ? OFFSET ?";
+    const countSql = "SELECT COUNT(id) AS totalBlogs FROM blog WHERE userID = ?";
+    const queryValues = [useID, limit, offset];
+  
     try {
-        pool.query(sql,insertValue,(error,result)=>{
-            if(error){
-                res.status(400).json({
-                    message:"query went wrong"
-                })
-            }
-            res.status(200).json({
-                message:"Successfully",
-                data:result
-            })
-        })
+      // Count query to get total number of blogs
+      pool.query(countSql, [useID], (error, countResult) => {
+        if (error) {
+          return res.status(500).json({ message: "Error counting blogs" });
+        }
+  
+        const totalBlogs = countResult[0].totalBlogs;
+        const totalPages = Math.ceil(totalBlogs / limit);
+  
+        // Pagination query to get the blog data
+        pool.query(sql, queryValues, (error, result) => {
+          if (error) {
+            return res.status(400).json({ message: "Query went wrong" });
+          }
+          res.status(200).json({
+            message: "Successfully fetched blogs",
+            data: result,
+            currentPage: page,
+            totalPages: totalPages,
+            totalBlogs: totalBlogs,
+          });
+        });
+      });
     } catch (error) {
-        res.status(400).json({
-            message:"something went wrong"
-        })
+      res.status(500).json({ message: "Something went wrong" });
     }
-}
+  };
+  
